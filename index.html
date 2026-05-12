@@ -666,13 +666,19 @@ let S = {
   currentQ:null, answered:false,
   totalCorrect:0, totalAnswered:0,
   recentAnswers:[], activeStages:['flag'],
-  paused:false, inGame:false,
+  paused:false, inGame:false, debugRun:false,
 };
 
 let profile = loadProfile();
 function loadProfile(){
-  try{ const d=JSON.parse(localStorage.getItem('geospark2')); if(d&&d.v===3) return d; }catch(e){}
-  return {v:3,bestScore:0,gamesPlayed:0,countryStats:{},sessionAcc:[]};
+  try{
+    const d=JSON.parse(localStorage.getItem('geospark2'));
+    if(d&&d.v===3){
+      if(!d.currentLevel)d.currentLevel=1;
+      return d;
+    }
+  }catch(e){}
+  return {v:3,bestScore:0,gamesPlayed:0,currentLevel:1,countryStats:{},sessionAcc:[]};
 }
 function saveProfile(){localStorage.setItem('geospark2',JSON.stringify(profile));}
 
@@ -1397,6 +1403,7 @@ function recordStats(name,correct){
 function checkLevelUp(){
   if(S.lvlProg>=S.lvlTarget){
     S.level++;S.lvlProg=0;S.lvlTarget=Math.min(10,5+S.level);
+    if(!S.debugRun) profile.currentLevel=S.level;
     AudioEngine.levelUp();
     renderStagePills();
     const newStages=STAGES.filter(s=>s.unlock===S.level);
@@ -1531,7 +1538,8 @@ function startGame(overrideLevel){
   document.getElementById('learn-screen').classList.add('hidden');
   document.getElementById('mapex-screen').classList.add('hidden');
   S.score=0;S.streak=0;S.bestStreak=0;
-  S.level=overrideLevel||1;S.lvlProg=0;S.lvlTarget=Math.min(10,5+S.level);S.lives=3;
+  S.debugRun=!!overrideLevel;
+  S.level=overrideLevel||profile.currentLevel||1;S.lvlProg=0;S.lvlTarget=Math.min(10,5+S.level);S.lives=3;
   S.totalCorrect=0;S.totalAnswered=0;S.recentAnswers=[];
   S.activeStages=['flag'];S.inGame=true;S.paused=false;
   updateHUD();nextQ();
@@ -1545,6 +1553,7 @@ function endGame(){
   const acc=S.totalAnswered>0?S.totalCorrect/S.totalAnswered:0;
   profile.sessionAcc.push(acc);
   if(profile.sessionAcc.length>20)profile.sessionAcc.shift();
+  if(!S.debugRun) profile.currentLevel=Math.max(1,S.level-2);
   saveProfile();
   document.getElementById('go-score').textContent=S.score;
   document.getElementById('go-correct').textContent=S.totalCorrect;
